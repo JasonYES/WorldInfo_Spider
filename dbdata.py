@@ -113,16 +113,15 @@ dbPageFields = [
     "立国历史"
 ]
 
-dbPageFieldsSet = {
+dbPageFieldsSet = set(dbPageFields)
+
+dbPageFields_Baike = [
+    "国庆日",
     "官方语言",
-    "官方语言及国家语言",
-    "GDP（国际汇率）",
-    "国内生产总值（国际汇率）",
-    "人口",
-    "面积",
+    "人口数量",
+    "国土面积",
     "主要宗教",
-    "宗教",
+    "GDP",
     "人类发展指数",
-    "主要节日",
-    "立国历史"
-}
+    "所属洲",
+]

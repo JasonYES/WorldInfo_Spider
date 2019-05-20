@@ -4,6 +4,8 @@ from dbdata import dbcountries, dbPageFields, dbPageFieldsSet
 import csv
 import time
 
+# 匹配  different: {'马其顿', '波黑', '蒙古'}
+
 
 def getCountry2href():
     html = urlopen(
@@ -121,15 +123,3 @@ def mainFiltered(start, end):
 
 
 main()
-
-
-# mapPrinter(pageExtractor(
-#     "https://zh.wikipedia.org/zh-cn/%E9%98%BF%E5%AF%8C%E6%B1%97"))
-
-# 匹配  different: {'马其顿', '波黑', '蒙古'}
-# dbcountriesSet = set(dbcountries)
-# diff = dbcountriesSet - countries
-
-# print(diff)
-# print(countries)
-# print(country2href)

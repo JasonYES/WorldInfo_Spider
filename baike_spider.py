@@ -1,58 +1,52 @@
 from urllib.request import urlopen
+import urllib.parse
 from bs4 import BeautifulSoup
-from dbdata import dbcountries, dbPageFields, dbPageFieldsSet
+from dbdata import dbcountries, dbPageFields, dbPageFieldsSet, dbPageFields_Baike
 import csv
-import time
+from time import sleep
 
 # baike spider
 
 
-def getCountry2href():
-    html = urlopen(
-        "https://zh.wikipedia.org/zh-cn/%E4%B8%96%E7%95%8C%E6%94%BF%E5%8D%80%E7%B4%A2%E5%BC%95")
+def getAIanswer(country, field):
 
-    bs4Obj = BeautifulSoup(html, features="html.parser")
-    tableList = bs4Obj.findAll("table", {"width": "90%"})
-
-    # 所有国家的set
-    country2href = {}
-    for table in tableList:
-        aTags = table.findAll("a")
-        for tag in aTags:
-            country = tag.get_text()
-            rawRref = tag.attrs["href"]
-            href = "https://zh.wikipedia.org/zh-cn/" + rawRref.split("/")[-1]
-            country2href[country] = href
-
-    return country2href
-
-# 对于一个国家, 生成一个map, 键值为在页面上找到的属性(未找到则没有键和值)
-
-
-def pageExtractor(url):
+    searchWord = urllib.parse.quote_plus(country + " " + field)
+    url = "https://www.baidu.com/from=844b/s?word=" + searchWord + \
+        "&ts=5486044&t_kt=0&ie=utf-8&fm_kl=021394be2f&rsv_iqid=3477954786&rsv_t=bbacTsfRkjUEfPXSLIkE13%252B3eIjmkbytLVToIZ15XxYWJoGsa3F%252BjWHePA&sa=ib&ms=1&rsv_pq=3477954786&rsv_sug4=5079&ss=100000000001&inputT=2598&tj=1"
     html = urlopen(url)
+
     bs4Obj = BeautifulSoup(html, features="html.parser")
-    table = bs4Obj.find("table", {"class": "infobox"})
+
+    answer = bs4Obj.find(  # 尝试第一种格式
+        "p", {"class": "c-line-clamp3 wa-ks-general-bottom-margin3 wa-ks-general-name c-gap-top-small c-color-link wa-ks-general-fontSize24"})
+    if answer == None:  # 可能的另一种格式
+        answer = bs4Obj.find(
+            "p", {"class": "c-line-clamp3 wa-ks-general-bottom-margin3 wa-ks-general-name c-gap-top-small c-color-link wa-ks-general-fontSize19"})
+    if answer == None:  # 可能的另一种格式
+        answer = bs4Obj.find(
+            "p", {"class": "wa-population-chart-prefix wa-population-chart-main c-title"})
+    if answer == None:  # 可能的另一种格式
+        answer = bs4Obj.find(
+            "p", {"class": "c-line-clamp3 c-gap-top-small wa-ks-general-fontSize24"})
+    if answer == None:  # 可能的另一种格式
+        answer = bs4Obj.find(
+            "p", {"class": "c-line-clamp3 c-gap-top-small wa-ks-general-fontSize19"})
+    if answer == None:  # 就此放弃
+        return ""
+
+    return answer.get_text()
+
+
+# 对于一个国家, 生成一个map, 键值为在页面上找到的属性
+
+def countryExtractor(country):
 
     resMap = {}
-    if(table == None):
-        return resMap
+    for f in dbPageFields_Baike:
+        fieldData = getAIanswer(country, f)
+        resMap[f] = fieldData
 
-    for row in table.tbody.findAll("tr"):
-        if row.th != None:  # 区分有无th的结构
-            rowTitle = row.th.get_text()
-            if dbPageFieldsSet.issuperset({rowTitle}):
-                if row.td != None:
-                    resMap[rowTitle] = row.td.get_text()
-                elif row.next_sibling.td != None:
-                    resMap[rowTitle] = row.next_sibling.td.get_text()
-
-        else:
-            if(row.td.find("b") == None):
-                continue
-            rowTitle = row.td.find("b").get_text()
-            if dbPageFieldsSet.issuperset({rowTitle}):
-                resMap[rowTitle] = row.td.ul.get_text()
+    # sleep(1)
 
     return resMap
 
@@ -68,7 +62,7 @@ def mapPrinter(mapData):
 def data2csv(writer, country, dataMap):
     print(dataMap)
     countryDataList = [country]
-    for field in dbPageFields:
+    for field in dbPageFields_Baike:
         fieldData = dataMap.get(field, None)
         if fieldData != None:
             countryDataList.append(fieldData)
@@ -77,39 +71,30 @@ def data2csv(writer, country, dataMap):
     writer.writerow(countryDataList)
 
 
-def main():
+def mainFiltered(start, end):
     # saving options
-    file = open('world_info.csv', 'w', newline='', encoding='utf8')
+    file = open('baike_world.csv', 'w', newline='', encoding='utf8')
     file.write('\ufeff')
     writer = csv.writer(file)
-    writer.writerow(["国家"] + dbPageFields)
-
+    writer.writerow(["国家"] + dbPageFields_Baike)
+    # loop security
+    if(end > len(dbcountries)):
+        end = len(dbcountries)
     # loop countries
-    Country2href = getCountry2href()
     count = 0
-    for country in dbcountries:
-        countryMap = pageExtractor(
-            Country2href[country])
+    for i in range(start, end):
+        country = dbcountries[i]
+        countryMap = countryExtractor(country)
         data2csv(writer, country, countryMap)
 
-        print(count, " ", country, " ", len(countryMap))
+        print(count, " ", country, "▲")
         count += 1
-        if(count > 5):
-            break
     # file closed
     file.close()
 
 
+def main():
+    mainFiltered(0, 100)
+
+
 main()
-
-
-# mapPrinter(pageExtractor(
-#     "https://zh.wikipedia.org/zh-cn/%E9%98%BF%E5%AF%8C%E6%B1%97"))
-
-# 匹配  different: {'马其顿', '波黑', '蒙古'}
-# dbcountriesSet = set(dbcountries)
-# diff = dbcountriesSet - countries
-
-# print(diff)
-# print(countries)
-# print(country2href)
