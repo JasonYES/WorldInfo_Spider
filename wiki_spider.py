@@ -26,7 +26,34 @@ def getCountry2href():
 
     return country2href
 
+
+def getCountry2EngName():
+    html = urlopen(
+        "https://zh.wikipedia.org/zh-cn/%E4%B8%96%E7%95%8C%E6%94%BF%E5%8D%80%E7%B4%A2%E5%BC%95")
+
+    bs4Obj = BeautifulSoup(html, features="html.parser")
+    tableList = bs4Obj.findAll("table", {"width": "90%"})
+
+    # 所有国家的set
+    Country2EngName = {}
+    for table in tableList:
+        trs = table.tbody.findAll("tr")
+        for tr in trs:
+            country = tr.find("a").get_text()
+            engName = ""
+            if(len(tr.findAll("td")) >= 3):
+                engName = tr.findAll("td")[2].get_text()
+
+            Country2EngName[country] = engName
+
+    return Country2EngName
 # 对于一个国家, 生成一个map, 键值为在页面上找到的属性(未找到则没有键和值)
+
+
+def Country2EngNamePrinter():
+    Country2EngName = getCountry2EngName()
+    for country in dbcountries:
+        print(Country2EngName.get(country, country))
 
 
 def pageExtractor(url):
@@ -121,5 +148,7 @@ def mainFiltered(start, end):
     # file closed
     file.close()
 
+# main()
 
-main()
+
+Country2EngNamePrinter()
